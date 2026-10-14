@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { createPortal } from "react-dom";
 import { CopilotChat, CopilotKitProvider, useAgent } from "@copilotkit/react-core/v2";
 import {
-  ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, CircleHelp, CornerDownLeft,
+  ArrowRight, ChevronDown, ChevronRight, CircleHelp, CornerDownLeft,
   FileText, Folder, FolderPlus, KeyRound, LoaderCircle, MessageCircle, MoreHorizontal,
   PanelLeftClose, PanelLeftOpen, PenLine, Pin, Plus, Search, Settings2, Trash2, X,
 } from "lucide-react";
@@ -43,28 +43,46 @@ function Mark({ small = false }: { small?: boolean }) {
 
 const HiddenControl = () => null;
 
-function ConversationMenu({ conversation, position, onClose, onAction }: {
+function ConversationMenu({ conversation, position, trigger, onClose, onAction }: {
   conversation: Conversation;
   position: { x: number; y: number };
+  trigger: HTMLButtonElement;
   onClose: () => void;
   onAction: (action: "rename" | "pin" | "move" | "delete", conversation: Conversation) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const portalTarget = trigger.closest('[role="dialog"][aria-modal="true"]') ?? document.body;
   useEffect(() => {
-    ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    const element = ref.current;
+    if (element) {
+      const bounds = element.getBoundingClientRect();
+      element.style.left = `${Math.max(8, Math.min(position.x, window.innerWidth - bounds.width - 8))}px`;
+      element.style.top = `${Math.max(8, Math.min(position.y, window.innerHeight - bounds.height - 8))}px`;
+      element.querySelector<HTMLButtonElement>("button")?.focus();
+    }
     const outside = (event: globalThis.MouseEvent) => { if (!ref.current?.contains(event.target as Node)) onClose(); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     document.addEventListener("mousedown", outside);
-    document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", escape); };
-  }, [onClose]);
-  return createPortal(<div className="conversation-menu" role="menu" ref={ref} style={{ left: Math.min(position.x, window.innerWidth - 198), top: Math.min(position.y, window.innerHeight - 185) }}>
-    <button role="menuitem" onClick={() => onAction("rename", conversation)}><PenLine size={15} />重命名</button>
-    <button role="menuitem" onClick={() => onAction("pin", conversation)}><Pin size={15} />{conversation.pinned ? "取消置顶" : "置顶会话"}</button>
-    <button role="menuitem" onClick={() => onAction("move", conversation)}><Folder size={15} />移动到项目</button>
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      if (trigger.isConnected && (document.activeElement === document.body || element?.contains(document.activeElement))) trigger.focus();
+    };
+  }, [onClose, trigger, position.x, position.y]);
+  return createPortal(<div className="conversation-menu" role="menu" aria-label={`${conversation.title}的更多操作`} ref={ref} style={{ left: Math.max(8, Math.min(position.x, window.innerWidth - 198)), top: Math.max(8, Math.min(position.y, window.innerHeight - 185)) }} onKeyDown={(event) => {
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); return; }
+    if (event.key === "Tab") { onClose(); return; }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const items = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]') ?? []);
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+    items[nextIndex]?.focus();
+  }}>
+    <button role="menuitem" tabIndex={-1} onClick={() => onAction("rename", conversation)}><PenLine size={15} />重命名</button>
+    <button role="menuitem" tabIndex={-1} onClick={() => onAction("pin", conversation)}><Pin size={15} />{conversation.pinned ? "取消置顶" : "置顶会话"}</button>
+    <button role="menuitem" tabIndex={-1} onClick={() => onAction("move", conversation)}><Folder size={15} />移动到项目</button>
     <div className="menu-divider" />
-    <button role="menuitem" className="danger" onClick={() => onAction("delete", conversation)}><Trash2 size={15} />删除会话</button>
-  </div>, document.body);
+    <button role="menuitem" tabIndex={-1} className="danger" onClick={() => onAction("delete", conversation)}><Trash2 size={15} />删除会话</button>
+  </div>, portalTarget);
 }
 
 function ChatPane({ conversation, configured, onError, onUpdate }: {
@@ -89,8 +107,9 @@ function ChatPane({ conversation, configured, onError, onUpdate }: {
         textArea: { disabled: !configured, "aria-label": "发送给 Agent 的消息" },
         sendButton: { ...(!configured ? { disabled: true } : {}), "aria-label": running ? "停止生成" : "发送消息" },
         addMenuButton: HiddenControl, startTranscribeButton: HiddenControl,
+        disclaimer: { className: "workspace-disclaimer" },
       }}
-      messageView={{ assistantMessage: { thumbsUpButton: HiddenControl, thumbsDownButton: HiddenControl, readAloudButton: HiddenControl, regenerateButton: HiddenControl } }}
+      messageView={{ userMessage: { messageRenderer: { className: "workspace-user-content" } }, assistantMessage: { thumbsUpButton: HiddenControl, thumbsDownButton: HiddenControl, readAloudButton: HiddenControl, regenerateButton: HiddenControl } }}
       labels={{
         chatInputPlaceholder: configured ? "描述你的任务…" : "配置 DeepSeek API Key 后即可开始对话",
         welcomeMessageText: "今天，我们从哪里开始？",
@@ -108,7 +127,7 @@ function ChatPane({ conversation, configured, onError, onUpdate }: {
         userMessageToolbarEditMessageLabel: "编辑消息",
       }}
       onError={(event) => { if ("error" in event) onError(event.error.message || "Agent 暂时无法回复，请检查模型配置并重试"); }} />
-    {empty && !running && <div className="chat-empty" aria-live="polite"><span className="empty-symbol"><MessageCircle size={26} strokeWidth={1.3} /></span><h2>一个新的开始</h2><p>写下你的问题，让思路在这里展开。</p><span className="small-hint">这个任务的对话会自动保存</span></div>}
+    {empty && !running && <div className="chat-empty" aria-live="polite"><span className="empty-symbol"><MessageCircle size={26} strokeWidth={1.3} /></span><h2>开始这个任务</h2><p>写下你想完成的工作，或提出一个问题。</p></div>}
     {!isReady && <span className="chat-connecting"><LoaderCircle className="spin" size={13} />正在连接 Agent</span>}
   </div>;
 }
@@ -123,11 +142,15 @@ export default function Workspace() {
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarTriggerRef = useRef<HTMLButtonElement>(null);
   const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
   const [projectDialog, setProjectDialog] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [queryComposing, setQueryComposing] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
@@ -135,13 +158,15 @@ export default function Workspace() {
   const [formError, setFormError] = useState("");
   const [editDialog, setEditDialog] = useState<EditDialog>(null);
   const [editValue, setEditValue] = useState("");
-  const [menu, setMenu] = useState<{ conversation: Conversation; position: { x: number; y: number } } | null>(null);
+  const [menu, setMenu] = useState<{ conversation: Conversation; position: { x: number; y: number }; trigger: HTMLButtonElement } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const initialized = useRef(false);
   const active = conversations.find((conversation) => conversation.id === activeId);
   const selectedProject = projects.find((project) => project.id === (active?.project_id ?? currentProject));
+  const mobileDrawerOpen = mobileViewport && sidebarOpen;
 
   const notify = useCallback((message: string) => setToast(message), []);
+  const closeMenu = useCallback(() => setMenu(null), []);
   const refresh = useCallback(async () => {
     try {
       const [nextProjects, nextConversations, nextHealth] = await Promise.all([
@@ -182,6 +207,47 @@ export default function Workspace() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const updateViewport = () => {
+      setMobileViewport(media.matches);
+      if (!media.matches) setSidebarOpen(false);
+    };
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+    return () => media.removeEventListener("change", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    const sidebar = sidebarRef.current;
+    sidebar?.querySelector<HTMLButtonElement>('button[aria-label="收起侧栏"]')?.focus();
+    const handleNavigationKey = (event: KeyboardEvent) => {
+      // Dialogs and portalled menus own their keyboard scope while they are open.
+      if (document.querySelector("dialog[open]") || (event.target instanceof Element && event.target.closest('[role="menu"]'))) return;
+      if (event.key === "Escape") {
+        event.preventDefault(); event.stopPropagation(); setSidebarOpen(false); return;
+      }
+      if (event.key !== "Tab" || !sidebar) return;
+      const items = Array.from(sidebar.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'))
+        .filter((item) => item.getClientRects().length > 0 && !item.closest("[inert]"));
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first) { event.preventDefault(); sidebar.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || !sidebar.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !sidebar.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleNavigationKey);
+    return () => {
+      document.removeEventListener("keydown", handleNavigationKey);
+      const trigger = sidebarTriggerRef.current;
+      if (trigger?.isConnected && trigger.getClientRects().length > 0) trigger.focus();
+    };
+  }, [mobileDrawerOpen]);
+
   const openConversation = useCallback((conversation: Pick<Conversation, "id" | "project_id">) => {
     setActiveId(conversation.id);
     setCurrentProject(conversation.project_id);
@@ -192,6 +258,7 @@ export default function Workspace() {
     });
     setSidebarOpen(false);
     setSearchOpen(false);
+    setQueryComposing(false);
   }, []);
 
   const createTask = useCallback(async (projectId?: string | null) => {
@@ -207,16 +274,15 @@ export default function Workspace() {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setSearchOpen((previous) => !previous); }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setQueryComposing(false); setSearchOpen((previous) => !previous); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n" && !projectDialog && !editDialog && !searchOpen) { event.preventDefault(); void createTask(); }
-      if (event.key === "Escape") setSidebarOpen(false);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [createTask, projectDialog, editDialog, searchOpen]);
 
   useEffect(() => {
-    if (!searchOpen) return;
+    if (!searchOpen || queryComposing) return;
     if (!query.trim()) {
       setResults(conversations.slice(0, 10).map((conversation) => ({
         ...conversation,
@@ -228,18 +294,19 @@ export default function Workspace() {
       return;
     }
     const controller = new AbortController();
+    setResults([]);
     setSearching(true);
     setSearchError("");
     const timer = setTimeout(async () => {
       try {
         const data = await api<SearchResult[]>(`search?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal });
-        setResults(data);
+        if (!controller.signal.aborted) setResults(data);
       } catch (error) {
-        if ((error as Error).name !== "AbortError") setSearchError("搜索暂时不可用，请稍后重试");
+        if (!controller.signal.aborted && (error as Error).name !== "AbortError") setSearchError("搜索暂时不可用，请稍后重试");
       } finally { if (!controller.signal.aborted) setSearching(false); }
     }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [query, searchOpen, conversations, projects]);
+  }, [query, queryComposing, searchOpen, conversations, projects]);
 
   const pinned = useMemo(() => conversations.filter((conversation) => conversation.pinned), [conversations]);
   const ungrouped = useMemo(() => conversations.filter((conversation) => !conversation.project_id && !conversation.pinned), [conversations]);
@@ -294,7 +361,7 @@ export default function Workspace() {
   function showMenu(event: MouseEvent<HTMLButtonElement>, conversation: Conversation) {
     event.stopPropagation();
     const bounds = event.currentTarget.getBoundingClientRect();
-    setMenu({ conversation, position: { x: bounds.right - 185, y: bounds.bottom + 5 } });
+    setMenu({ conversation, position: { x: bounds.right - 185, y: bounds.bottom + 5 }, trigger: event.currentTarget });
   }
 
   function conversationRow(conversation: Conversation, indented = false) {
@@ -302,7 +369,7 @@ export default function Workspace() {
       <button className="conversation-select" onClick={() => openConversation(conversation)} title={conversation.title} aria-current={activeId === conversation.id ? "page" : undefined}>
         {conversation.pinned ? <Pin size={14} /> : <MessageCircle size={14} />}<span>{conversation.title}</span><time>{relativeTime(conversation.updated_at)}</time>
       </button>
-      <button className="conversation-options" onClick={(event) => showMenu(event, conversation)} aria-label={`${conversation.title}的更多操作`}><MoreHorizontal size={17} /></button>
+      <button className="conversation-options" onClick={(event) => showMenu(event, conversation)} aria-haspopup="menu" aria-expanded={menu?.conversation.id === conversation.id} aria-label={`${conversation.title}的更多操作`}><MoreHorizontal size={17} /></button>
     </div>;
   }
 
@@ -310,9 +377,9 @@ export default function Workspace() {
 
   return <CopilotKitProvider runtimeUrl="/api/copilotkit" agentId="assistant" enableInspector={false} showIntelligenceIndicator={false}>
     <div className="workspace-shell">
-      {sidebarOpen && <button className="sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-label="关闭侧栏" />}
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-mobile-open" : ""}`} aria-label="工作空间导航">
-        <div className="sidebar-brand"><button className="brand-home" onClick={() => { setActiveId(null); setCurrentProject(null); setSidebarOpen(false); }}><Mark small /><span>拾序<span className="brand-subtitle">Shixu Work</span></span></button><button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="收起侧栏"><PanelLeftClose size={18} /></button><span className="demo-badge">DEMO</span></div>
+      {mobileDrawerOpen && <button tabIndex={-1} className="sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-label="关闭侧栏" />}
+      <aside ref={sidebarRef} className={`sidebar ${sidebarOpen ? "sidebar-mobile-open" : ""}`} role={mobileDrawerOpen ? "dialog" : undefined} aria-modal={mobileDrawerOpen || undefined} aria-label="工作空间导航" tabIndex={mobileViewport ? -1 : undefined} inert={mobileViewport && !sidebarOpen}>
+        <div className="sidebar-brand"><button className="brand-home" onClick={() => { setActiveId(null); setCurrentProject(null); setSidebarOpen(false); }}><Mark small /><span>拾序<span className="brand-subtitle">Shixu Work</span></span></button><button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="收起侧栏"><PanelLeftClose size={18} /></button></div>
         <div className="sidebar-actions">
           <button className="nav-action new-task" aria-label="新建任务" onClick={() => void createTask()} disabled={creating || loadError}><PenLine size={17} /><span>新建任务</span>{creating ? <LoaderCircle size={14} className="spin" /> : <kbd aria-hidden="true">⌘ N</kbd>}</button>
           <button className="nav-action" aria-label="搜索会话" onClick={() => setSearchOpen(true)}><Search size={17} /><span>搜索会话</span><kbd aria-hidden="true">⌘ K</kbd></button>
@@ -327,7 +394,7 @@ export default function Workspace() {
             return <div className="project-group" key={project.id}>
               <div className={`project-row ${currentProject === project.id ? "project-selected" : ""}`}>
                 <button className="project-toggle" aria-expanded={!collapsed} onClick={() => { setCurrentProject(project.id); setCollapsedProjects((previous) => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; }); }}>
-                  {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}<Folder size={16} /><span>{project.name}</span><span className="project-count">{conversations.filter((conversation) => conversation.project_id === project.id).length}</span>
+                  {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}<Folder size={16} /><span>{project.name}</span>
                 </button><button className="project-add" onClick={() => void createTask(project.id)} disabled={creating} title="在此项目中新建任务" aria-label={`在${project.name}中新建任务`}><Plus size={15} /></button>
               </div>
               {!collapsed && <div className="project-conversations">{items.length ? items.map((conversation) => conversationRow(conversation, true)) : <p className="project-empty">暂无任务</p>}</div>}
@@ -336,22 +403,26 @@ export default function Workspace() {
           <div className="list-heading recent-heading"><span>未分组会话</span><span className="count-badge">{ungrouped.length}</span></div>
           {ungrouped.length ? ungrouped.map((conversation) => conversationRow(conversation)) : <p className="list-empty">每个想法都可以成为一个任务</p>}
         </div>
-        <div className="sidebar-footer"><span className="user-avatar">L</span><span className="user-info">本地工作空间<span><i />数据保存在本机</span></span><button className="icon-button" aria-label="使用说明" title="使用说明" onClick={() => setHelpOpen(true)}><Settings2 size={17} /></button></div>
+        <div className="sidebar-footer"><span className="user-avatar">拾</span><span className="user-info">个人工作空间<span>Shixu Work</span></span><button className="icon-button" aria-label="使用说明" title="使用说明" onClick={() => setHelpOpen(true)}><Settings2 size={17} /></button></div>
       </aside>
-      <main className="main-panel">
-        <header className="workspace-header"><div className="header-title"><button className="icon-button mobile-only" onClick={() => setSidebarOpen(true)} aria-label="展开侧栏"><PanelLeftOpen size={19} /></button><Folder size={17} className="header-folder" /><span>{active?.title ?? selectedProject?.name ?? "工作空间"}</span>{active && <button className="icon-button header-more" onClick={(event) => showMenu(event, active)} aria-label="当前任务的更多操作"><MoreHorizontal size={18} /></button>}</div><div className="header-meta">{selectedProject && active && <span className="header-project">{selectedProject.name}</span>}<span className="model-badge"><i />DeepSeek<span>flash</span></span><button className="icon-button header-help" onClick={() => setHelpOpen(true)} aria-label="帮助"><CircleHelp size={17} /></button></div></header>
+      <main className="main-panel" inert={mobileDrawerOpen}>
+        <header className="workspace-header"><div className="header-title"><button className="icon-button mobile-only" ref={sidebarTriggerRef} onClick={() => setSidebarOpen(true)} aria-label="展开侧栏" aria-haspopup="dialog" aria-expanded={mobileDrawerOpen}><PanelLeftOpen size={19} /></button><Folder size={17} className="header-folder" /><span>{active?.title ?? selectedProject?.name ?? "工作空间"}</span>{active && <button className="icon-button header-more" onClick={(event) => showMenu(event, active)} aria-haspopup="menu" aria-expanded={menu?.conversation.id === active.id} aria-label="当前任务的更多操作"><MoreHorizontal size={18} /></button>}</div><div className="header-meta">{selectedProject && active && <span className="header-project">{selectedProject.name}</span>}<button className="icon-button header-help" onClick={() => setHelpOpen(true)} aria-label="帮助"><CircleHelp size={17} /></button></div></header>
         {loadError && <div className="connection-banner"><span><LoaderCircle size={15} />无法连接后端，请确认服务已启动</span><button onClick={() => void refresh()}>重试</button></div>}
-        {!loadError && health && !health.model_configured && <div className="setup-banner"><span><KeyRound size={15} /><span>还差一步：在 <code>backend/.env</code> 中配置 <code>DEEPSEEK_API_KEY</code>，然后重启后端。</span></span><button onClick={() => setHelpOpen(true)}>查看说明<ArrowUpRight size={13} /></button></div>}
+        {!loadError && health && !health.model_configured && <div className="setup-banner"><span><KeyRound size={15} /><span>尚未连接模型，配置后即可开始对话。</span></span><button onClick={() => setHelpOpen(true)}>查看说明<ArrowRight size={13} /></button></div>}
         {active ? <ChatPane conversation={active} configured={!!health?.model_configured} onError={notify} onUpdate={refresh} /> : <div className="welcome-view">
-          <div className="welcome-content"><div className="welcome-eyebrow"><span />你的专属 Agent 工作空间</div><Mark /><h1>{selectedProject ? <>在「{selectedProject.name}」里，<br />开始一个新任务。</> : <>让想法，<br />从这里开始。</>}</h1><p>和 Agent 一起梳理问题、整理思路。<br />每段对话，都会成为下一次出发的起点。</p><div className="welcome-actions"><button className="primary-button" onClick={() => void createTask()} disabled={creating || loadError}>{creating ? <LoaderCircle size={17} className="spin" /> : <Plus size={17} />}新建任务<ArrowRight size={16} /></button><button className="secondary-button" onClick={beginProject}><FolderPlus size={16} />创建项目</button></div><div className="welcome-cards"><button onClick={() => void createTask()} disabled={creating || loadError}><span className="welcome-card-icon"><MessageCircle size={19} /></span><strong>从一个问题开始</strong><span>提问、分析，让思路变得清晰</span><ArrowUpRight className="card-arrow" size={16} /></button><button onClick={beginProject}><span className="welcome-card-icon"><Folder size={19} /></span><strong>给工作一个归处</strong><span>用项目整理相关任务和对话</span><ArrowUpRight className="card-arrow" size={16} /></button></div><div className="welcome-footnote"><span className="footnote-line" /><span><Check size={13} />会话自动保存</span><span><Search size={13} />随时搜索历史</span><span className="footnote-line" /></div></div>
-          <span className="welcome-page-note">少一些切换，多一些专注。</span>
+          <div className="welcome-content">
+            <span className="welcome-symbol" aria-hidden="true">{selectedProject ? <Folder size={28} strokeWidth={1.4} /> : <MessageCircle size={28} strokeWidth={1.4} />}</span>
+            <h1>{selectedProject ? selectedProject.name : "开始你的工作"}</h1>
+            <p>{selectedProject ? "在这个项目中创建任务，和 Agent 一起推进工作。" : "新建一个任务，和 Agent 一起梳理问题、推进工作。"}</p>
+            <div className="welcome-actions"><button className="primary-button" onClick={() => void createTask()} disabled={creating || loadError}>{creating ? <LoaderCircle size={17} className="spin" /> : <Plus size={17} />}新建任务</button><button className="secondary-button" onClick={beginProject}><FolderPlus size={16} />创建项目</button></div>
+          </div>
         </div>}
       </main>
       {toast && <div className="toast" role="status"><span>{toast}</span><button className="icon-button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={15} /></button></div>}
-      {menu && <ConversationMenu {...menu} onClose={() => setMenu(null)} onAction={(action, conversation) => void menuAction(action, conversation)} />}
-      {projectDialog && <Dialog title="创建项目" onClose={() => { if (!creating) setProjectDialog(false); }}><form onSubmit={submitProject}><p className="dialog-description">把相关的任务和思路，放在同一个地方。</p><label htmlFor="project-name">项目名称</label><input autoFocus id="project-name" className="form-input" value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：产品研究、个人学习" maxLength={80} required /><p className="field-hint">你可以在项目中创建多个独立会话。</p>{formError && <p className="form-error" role="alert">{formError}</p>}<div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setProjectDialog(false)} disabled={creating}>取消</button><button type="submit" className="primary-button" disabled={creating || !projectName.trim()}>{creating && <LoaderCircle size={15} className="spin" />}创建项目</button></div></form></Dialog>}
+      {menu && <ConversationMenu {...menu} onClose={closeMenu} onAction={(action, conversation) => void menuAction(action, conversation)} />}
+      {projectDialog && <Dialog title="创建项目" onClose={() => { if (!creating) setProjectDialog(false); }}><form onSubmit={submitProject}><p className="dialog-description">把相关的任务和思路，放在同一个地方。</p><label htmlFor="project-name">项目名称</label><input autoFocus id="project-name" className="form-input" value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：产品研究、个人学习" maxLength={80} required />{formError && <p className="form-error" role="alert">{formError}</p>}<div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setProjectDialog(false)} disabled={creating}>取消</button><button type="submit" className="primary-button" disabled={creating || !projectName.trim()}>{creating && <LoaderCircle size={15} className="spin" />}创建项目</button></div></form></Dialog>}
       {editDialog && <Dialog title={editDialog.mode === "rename" ? "重命名会话" : "移动到项目"} onClose={() => { if (!creating) setEditDialog(null); }}><form onSubmit={submitEdit}><p className="dialog-description">{editDialog.mode === "rename" ? "一个清晰的名字，让你更容易找回这段对话。" : "会话内容和 Agent 的上下文会一起保留。"}</p><label htmlFor="edit-value">{editDialog.mode === "rename" ? "会话名称" : "目标项目"}</label>{editDialog.mode === "rename" ? <input autoFocus id="edit-value" className="form-input" value={editValue} onChange={(event) => setEditValue(event.target.value)} maxLength={120} required /> : <select autoFocus id="edit-value" className="form-input" value={editValue} onChange={(event) => setEditValue(event.target.value)}><option value="">未分组会话</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select>}{formError && <p className="form-error" role="alert">{formError}</p>}<div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setEditDialog(null)} disabled={creating}>取消</button><button type="submit" className="primary-button" disabled={creating || (editDialog.mode === "rename" && !editValue.trim())}>{creating && <LoaderCircle size={15} className="spin" />}保存</button></div></form></Dialog>}
-      {searchOpen && <Dialog title="搜索会话" className="search-dialog" onClose={() => setSearchOpen(false)}><div className="search-input-wrap"><Search size={20} /><input autoFocus aria-label="搜索会话标题或消息内容" placeholder="搜索会话标题或消息内容…" value={query} onChange={(event) => setQuery(event.target.value)} />{searching && <LoaderCircle size={17} className="spin" />}</div><div className="search-caption">{query.trim() ? "搜索结果" : "最近的会话"}<span>{!searching && `${results.length} 个会话`}</span></div><div className="search-results">{searchError ? <p className="search-empty" role="alert">{searchError}</p> : results.length ? results.map((result) => <button className="search-result" key={result.id} onClick={() => { openConversation(result); if (!conversations.some((conversation) => conversation.id === result.id)) void refresh(); }}><MessageCircle size={18} /><span className="search-result-content"><strong>{result.title}</strong>{result.snippet && <span>{result.snippet}</span>}<small>{result.project_name ?? "未分组会话"} · {relativeTime(result.updated_at)}</small></span><CornerDownLeft size={14} /></button>) : <div className="search-empty"><Search size={28} strokeWidth={1.2} /><p>{searching ? "正在搜索…" : query.trim() ? "没有找到匹配的会话" : "还没有会话记录"}</p><span>{!searching && (query.trim() ? "试试另一个关键词" : "新建一个任务，开始你的第一段对话")}</span></div>}</div><div className="search-bottom"><span><kbd>Esc</kbd>关闭</span><span>搜索标题与已保存的消息</span></div></Dialog>}
+      {searchOpen && <Dialog title="搜索会话" className="search-dialog" onClose={() => { setSearchOpen(false); setQueryComposing(false); }}><div className="search-input-wrap"><Search size={20} /><input autoFocus aria-label="搜索会话标题或消息内容" placeholder="搜索会话标题或消息内容…" value={query} onCompositionStart={() => { setQueryComposing(true); setResults([]); setSearching(true); setSearchError(""); }} onCompositionEnd={(event) => { setQuery(event.currentTarget.value); setQueryComposing(false); }} onChange={(event) => { setQuery(event.target.value); setResults([]); setSearching(true); setSearchError(""); }} />{searching && <LoaderCircle size={17} className="spin" />}</div><div className="search-caption">{query.trim() ? "搜索结果" : "最近的会话"}<span>{!searching && `${results.length} 个会话`}</span></div><div className="search-results" aria-busy={searching}>{searchError ? <p className="search-empty" role="alert">{searchError}</p> : results.length ? results.map((result) => <button className="search-result" key={result.id} onClick={() => { openConversation(result); if (!conversations.some((conversation) => conversation.id === result.id)) void refresh(); }}><MessageCircle size={18} /><span className="search-result-content"><strong>{result.title}</strong>{result.snippet && <span>{result.snippet}</span>}<small>{result.project_name ?? "未分组会话"} · {relativeTime(result.updated_at)}</small></span><CornerDownLeft size={14} /></button>) : <div className="search-empty"><Search size={28} strokeWidth={1.2} /><p>{searching ? "正在搜索…" : query.trim() ? "没有找到匹配的会话" : "还没有会话记录"}</p><span>{!searching && (query.trim() ? "试试另一个关键词" : "新建一个任务，开始你的第一段对话")}</span></div>}</div><div className="search-bottom"><span><kbd>Esc</kbd>关闭</span><span>标题与消息内容</span></div></Dialog>}
       {helpOpen && <Dialog title="使用拾序" onClose={() => setHelpOpen(false)}><div className="help-content"><p>这是一个单用户的本地 Web Demo。新建任务后，右侧即可开始对话；项目用于整理相关会话。</p><div className="help-block"><KeyRound size={19} /><div><strong>连接 DeepSeek</strong><p>在项目的 <code>backend/.env</code> 文件里填写 <code>DEEPSEEK_API_KEY</code>，保存后重启后端服务。</p><small>模型固定使用 deepseek-flash。密钥只由后端读取。</small></div></div><div className="help-block"><FileText size={19} /><div><strong>对话自动保存</strong><p>刷新页面或重新启动服务后，可以从左侧继续已有会话。用搜索找到标题或消息中的关键词。</p></div></div><div className="help-shortcuts"><span><kbd>⌘ / Ctrl K</kbd>搜索会话</span><span><kbd>Enter</kbd>发送消息</span><span><kbd>Shift Enter</kbd>消息换行</span></div></div></Dialog>}
     </div>
   </CopilotKitProvider>;

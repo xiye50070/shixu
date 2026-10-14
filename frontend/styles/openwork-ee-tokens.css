@@ -1,0 +1,182 @@
+/* Independently authored OpenWork EE / Den design contract, 2026-09-08.
+   Apply the scope to the application shell and its portal host.
+   Variables alone do not style components. See references/adoption.md. */
+.ow-ee, [data-ow-ee] {
+  color-scheme: light;
+  --ow-canvas: #fafafa;
+  --ow-surface: #ffffff;
+  --ow-surface-hover: #f9fafb;
+  --ow-surface-active: #f3f4f6;
+  --ow-divider: #f3f4f6;
+  --ow-border: #e5e7eb;
+  --ow-border-hover: #d1d5db;
+  --ow-heading: #030712;
+  --ow-text: #111827;
+  --ow-text-secondary: #374151;
+  --ow-text-soft: #4b5563;
+  --ow-muted: #6b7280;
+  --ow-placeholder: #9ca3af;
+  --ow-primary: #0f172a;
+  --ow-primary-hover: #111c33;
+  --ow-on-primary: #ffffff;
+  --ow-focus-ring: 0 0 0 2px rgba(17,24,39,.05);
+  /* Clear keyboard focus is a migration enhancement. */
+  --ow-focus-visible: #475569;
+  --ow-success-bg: #ecfdf5;
+  --ow-success: #047857;
+  --ow-info-bg: #eff6ff;
+  --ow-info: #1d4ed8;
+  --ow-warning-bg: #fffbeb;
+  --ow-warning: #b45309;
+  --ow-danger-bg: #fef2f2;
+  --ow-danger: #dc2626;
+  --ow-danger-border: #fecaca;
+  --ow-notice-error-border: #fecaca;
+  --ow-notice-error-bg: #fef2f2;
+  --ow-notice-error: #b91c1c;
+  --ow-notice-info-border: #bae6fd;
+  --ow-notice-info-bg: #f0f9ff;
+  --ow-notice-info: #334155;
+  --ow-notice-warning-border: #fde68a;
+  --ow-notice-warning-bg: #fffbeb;
+  --ow-notice-warning: #92400e;
+  /* Inter must be supplied by the target app; CJK fallback is an adaptation. */
+  --ow-font-sans: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  --ow-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --ow-text-page: 28px;
+  --ow-leading-page: 34px;
+  --ow-tracking-page: -.5px;
+  --ow-weight-page: 500;
+  --ow-text-hero: 24px;
+  --ow-leading-hero: 30px;
+  --ow-tracking-hero: -.02em;
+  --ow-weight-hero: 600;
+  --ow-text-section: 16px;
+  --ow-leading-section: 24px;
+  --ow-text-body: 14px;
+  --ow-leading-body: 21px;
+  --ow-text-control: 13px;
+  --ow-text-small: 12px;
+  --ow-text-meta: 11px;
+  --ow-radius-control: 8px;
+  --ow-radius-nav: 12px;
+  --ow-radius-card: 30px;
+  --ow-radius-card-spacious: 36px;
+  --ow-radius-notice: 24px;
+  --ow-radius-dialog: 28px;
+  --ow-radius-pill: 9999px;
+  --ow-radius-segment: 6px;
+  --ow-space-half: 2px;
+  --ow-space-1: 4px;
+  --ow-space-2: 8px;
+  --ow-space-3: 12px;
+  --ow-space-4: 16px;
+  --ow-space-5: 20px;
+  --ow-space-6: 24px;
+  --ow-space-8: 32px;
+  --ow-card-padding: 24px;
+  --ow-card-padding-spacious: 32px;
+  --ow-button-height: 40px;
+  --ow-button-small-height: 32px;
+  --ow-button-padding-x: 20px;
+  --ow-button-small-padding-x: 14px;
+  --ow-input-height: 42px;
+  --ow-input-padding-x: 16px;
+  --ow-sidebar-width: 260px;
+  --ow-drawer-width: 280px;
+  --ow-header-height: 56px;
+  --ow-content-max: 860px;
+  --ow-content-wide-max: 1200px;
+  --ow-hero-height: 104px;
+  --ow-table-padding-x: 24px;
+  --ow-table-padding-y: 12px;
+  --ow-switch-width: 40px;
+  --ow-switch-height: 24px;
+  --ow-switch-thumb: 20px;
+  --ow-dialog-max: 448px;
+  --ow-shadow-card: none;
+  --ow-shadow-menu: 0 20px 44px -28px rgba(15,23,42,.22);
+  --ow-shadow-dialog: 0 24px 80px -32px rgba(15,23,42,.45);
+  --ow-motion-fast: 150ms;
+  --ow-hero-1: #E2E8F0;
+  --ow-hero-2: #020617;
+  --ow-hero-3: #0F172A;
+  --ow-hero-4: #94A3B8;
+  /* Static fallback, not a pixel-equivalent replacement for PaperMeshGradient. */
+  --ow-hero-static: linear-gradient(135deg, var(--ow-hero-1), var(--ow-hero-2), var(--ow-hero-3), var(--ow-hero-4));
+  --ow-hero-overlay: linear-gradient(90deg, rgba(11,20,32,.52) 0%, rgba(11,20,32,.18) 55%, rgba(11,20,32,.04) 100%);
+}
+/* SaaS is an opt-in adaptation, not a claim about the original Den screens.
+   These are variables only: map them through the target component library. */
+.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"] {
+  --ow-placeholder: #6b7280;
+  --ow-primary-active: #020617;
+  --ow-text-control: 14px;
+  --ow-leading-control: 20px;
+  --ow-leading-body: 22px;
+  --ow-text-small: 12px;
+  --ow-text-meta: 12px;
+  --ow-leading-meta: 18px;
+  --ow-icon-size: 16px;
+  --ow-control-gap: 8px;
+  --ow-action-gap: 8px;
+  --ow-toolbar-group-gap: 16px;
+  --ow-field-label-gap: 8px;
+  --ow-field-gap: 20px;
+  --ow-section-gap: 24px;
+  --ow-button-height: 40px;
+  --ow-button-small-height: 32px;
+  --ow-button-padding-x: 16px;
+  --ow-button-small-padding-x: 12px;
+  --ow-input-height: 40px;
+  --ow-input-padding-x: 12px;
+  --ow-table-text: 14px;
+  --ow-leading-table: 20px;
+  --ow-text-table-header: 14px;
+  --ow-weight-table-header: 500;
+  --ow-table-control-height: 32px;
+  --ow-table-row-height: 48px;
+  --ow-table-padding-x: 16px;
+  --ow-table-padding-y: 8px;
+  --ow-radius-table: 12px;
+  --ow-table-surface-padding: 0px;
+  /* SaaS component-family targets; never override the 280px mobile-nav drawer. */
+  --ow-option-height: 40px;
+  --ow-option-small-height: 32px;
+  --ow-tree-indent: 20px;
+  --ow-popup-padding: 4px;
+  --ow-popup-max-height: 288px;
+  --ow-calendar-cell-size: 32px;
+  --ow-tag-min-height: 24px;
+  --ow-panel-padding: 16px;
+  --ow-drawer-width-standard: 520px;
+  --ow-drawer-width-wide: 720px;
+}
+/* Density inherits from the SaaS root. A table surface may explicitly override it.
+   It changes table rows only, never toolbar controls or form fields.
+   Row heights are single-line minima, not clipping limits. These values assume
+   dividers do not add height (e.g. inset shadow); account for structural borders
+   in the actual component library's box model. Coarse-pointer targets may grow. */
+:is(.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"])[data-density="standard"],
+:is(.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"]) [data-ow-table][data-density="standard"] {
+  --ow-table-row-height: 48px;
+  --ow-table-padding-y: 8px;
+}
+:is(.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"])[data-density="compact"],
+:is(.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"]) [data-ow-table][data-density="compact"] {
+  --ow-table-row-height: 40px;
+  --ow-table-padding-y: 4px;
+}
+:is(.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"])[data-density="comfortable"],
+:is(.ow-ee[data-ow-profile="saas"], [data-ow-ee][data-ow-profile="saas"]) [data-ow-table][data-density="comfortable"] {
+  --ow-table-row-height: 56px;
+  --ow-table-padding-y: 12px;
+}
+/* :lang also recognizes language inherited from an ancestor such as <html>. */
+.ow-ee:lang(zh), [data-ow-ee]:lang(zh) {
+  --ow-tracking-page: 0;
+  --ow-tracking-hero: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ow-ee, [data-ow-ee] { --ow-motion-fast: 0ms; }
+}

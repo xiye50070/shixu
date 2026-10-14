@@ -1,0 +1,211 @@
+{
+  "desktop": {
+    "sidebar": {
+      "width": 260,
+      "height": 960,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "0px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "header": {
+      "width": 1180,
+      "height": 56,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "0px",
+      "padding": "0px 24px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "primary": {
+      "width": 114,
+      "height": 40,
+      "background": "rgb(15, 23, 42)",
+      "color": "rgb(255, 255, 255)",
+      "radius": "8px",
+      "padding": "0px 16px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "20px"
+    },
+    "body": {
+      "width": 1440,
+      "height": 960,
+      "background": "rgb(250, 250, 250)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "0px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "dialog": {
+      "width": 448,
+      "height": 276,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "28px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "input": {
+      "width": 398,
+      "height": 40,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "8px",
+      "padding": "0px 12px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "20px"
+    },
+    "composer": {
+      "width": 860,
+      "height": 68,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "16px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "21px"
+    },
+    "textarea": {
+      "width": 776,
+      "height": 46,
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "0px",
+      "padding": "12px 20px 12px 0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "send": {
+      "width": 32,
+      "height": 32,
+      "background": "rgb(15, 23, 42)",
+      "color": "rgb(255, 255, 255)",
+      "radius": "8px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "21px"
+    },
+    "user": {
+      "width": 158,
+      "height": 34,
+      "background": "rgb(243, 244, 246)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "18px",
+      "padding": "6px 16px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    }
+  },
+  "errors": [],
+  "new_messages_submitted": 0,
+  "fonts": {
+    "latin": {
+      "fonts": [
+        {
+          "familyName": "Inter",
+          "postScriptName": "Inter-Regular",
+          "isCustomFont": true,
+          "glyphCount": 10
+        }
+      ]
+    },
+    "chinese": {
+      "fonts": [
+        {
+          "familyName": "PingFang SC",
+          "postScriptName": "PingFangSC-Medium",
+          "isCustomFont": false,
+          "glyphCount": 6
+        }
+      ]
+    }
+  },
+  "mobile": {
+    "header": {
+      "width": 390,
+      "height": 56,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "0px",
+      "padding": "0px 12px 0px 8px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "send": {
+      "width": 44,
+      "height": 44,
+      "background": "rgb(15, 23, 42)",
+      "color": "rgb(255, 255, 255)",
+      "radius": "8px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "21px"
+    },
+    "overflow": false,
+    "drawer": {
+      "width": 280,
+      "height": 844,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "0px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "dialog": {
+      "width": 366,
+      "height": 296,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "28px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    },
+    "input": {
+      "width": 316,
+      "height": 44,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "8px",
+      "padding": "0px 12px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "20px"
+    }
+  },
+  "narrow": {
+    "viewport": "720x480, equivalent layout width at 200% of 1440x960",
+    "overflow": false,
+    "search": {
+      "width": 640,
+      "height": 456,
+      "background": "rgb(255, 255, 255)",
+      "color": "rgb(17, 24, 39)",
+      "radius": "28px",
+      "padding": "0px",
+      "font": "Inter, \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"IBM Plex Sans\", \"Avenir Next\", \"Segoe UI\", sans-serif",
+      "size": "14px",
+      "leading": "22px"
+    }
+  }
+}
