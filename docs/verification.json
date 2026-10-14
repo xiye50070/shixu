@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-14",
+  "backend_tests": {
+    "passed": 20,
+    "provider": "test graph"
+  },
+  "browser_tests": {
+    "passed": 4,
+    "provider": "local protocol fixture"
+  },
+  "typescript": "passed",
+  "next_build": "passed",
+  "real_model": {
+    "model": "deepseek-flash",
+    "intentional_requests": 1,
+    "assistant_responses": 1,
+    "tool_calls": 0,
+    "output_limit": 16,
+    "retries": 0,
+    "reply": "连接成功",
+    "usage": {
+      "input_tokens": 318,
+      "output_tokens": 2,
+      "total_tokens": 320
+    }
+  },
+  "completed_history_after_full_service_restart": "passed",
+  "restart_check_model_requests_sent": 0,
+  "real_multiturn": "not additionally verified",
+  "real_tool_call": "not additionally verified",
+  "rename": {
+    "project": "Shixu Work",
+    "directory": "shixu-work",
+    "branding": "passed",
+    "saved_history": "passed",
+    "model_requests_sent": 0
+  }
+}
