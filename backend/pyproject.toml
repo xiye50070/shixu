@@ -8,9 +8,11 @@ dependencies = [
   "uvicorn[standard]>=0.34,<1",
   "langchain>=1.0,<2",
   "langchain-deepseek>=1.0,<2",
+  "langchain-openai>=1.0,<2",
   "langgraph-checkpoint-sqlite>=3.0,<4",
   "ag-ui-langgraph>=0.0.34,<0.1",
   "python-dotenv>=1.0,<2",
+  "deepagents==0.7.25",
 ]
 
 [dependency-groups]

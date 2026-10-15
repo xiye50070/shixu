@@ -25,9 +25,9 @@ def run_body(thread_id, messages):
 
 def test_management_without_model_key(tmp_path):
     with TestClient(create_app(Settings(data_dir=tmp_path))) as client:
-        assert client.get("/api/health").json() == {"status": "ok", "model": "deepseek-flash", "model_configured": False}
+        assert client.get("/api/health").json() == {"status": "ok", "provider": "deepseek", "model": "deepseek-flash", "model_configured": False}
         assert client.post("/api/projects", json={"name": "  "}).status_code == 422
-        project = client.post("/api/projects", json={"name": "  研发项目  "}).json()
+        project = client.post("/api/projects", json={"name": "  研发项目  ", "workspace_path": str(tmp_path.parent)}).json()
         assert project["name"] == "研发项目"
         assert client.post("/api/conversations", json={"project_id": "not-a-project"}).status_code == 404
         conversation = client.post("/api/conversations", json={"project_id": project["id"]}).json()
@@ -53,8 +53,8 @@ def test_empty_hydration_never_calls_model_and_missing_key_reports_chinese(tmp_p
         assert events[1]["messages"] == []
         events = parse_events(client.post("/agent", json=run_body(cid, [{"id": "h1", "role": "user", "content": "你好"}])))
         assert [event["type"] for event in events] == ["RUN_STARTED", "RUN_ERROR"]
-        assert events[-1]["code"] == "DEEPSEEK_KEY_MISSING"
-        assert "backend/.env" in events[-1]["message"]
+        assert events[-1]["code"] == "MODEL_KEY_MISSING"
+        assert "模型配置" in events[-1]["message"]
         assert client.post("/agent", json=run_body("missing", [])).status_code == 404
         assert client.get(f"/api/conversations/{cid}/messages").json() == []
 
@@ -138,11 +138,11 @@ def test_durable_checkpoint_multiturn_isolation_search_and_scoped_delete(tmp_pat
 
 
 @pytest.mark.parametrize("message,expected", [
-    ("401 secret-provider-message", "DEEPSEEK_AUTH_ERROR"),
-    ("429 rate limit", "DEEPSEEK_QUOTA_ERROR"),
-    ("connection timeout", "DEEPSEEK_CONNECTION_ERROR"),
-    ("400 invalid model", "DEEPSEEK_REQUEST_ERROR"),
-    ("unknown secret-provider-message", "AGENT_RUN_ERROR"),
+    ("401 secret-provider-message", "MODEL_AUTH_ERROR"),
+    ("429 rate limit", "MODEL_QUOTA_ERROR"),
+    ("connection timeout", "MODEL_CONNECTION_ERROR"),
+    ("400 invalid model", "MODEL_REQUEST_ERROR"),
+    ("unknown secret-provider-message", "MODEL_RUN_ERROR"),
 ])
 def test_provider_errors_are_sanitized(message, expected):
     code, public = public_model_error(message)

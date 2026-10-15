@@ -32,6 +32,9 @@ import sys
 for value in sys.argv[1:]:
     port = int(value)
     with socket.socket() as sock:
+        # Recently closed test connections may remain in TIME_WAIT. An active
+        # listener still rejects this bind; a completed run can restart at once.
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind(("127.0.0.1", port))
         except OSError as exc:
@@ -85,12 +88,22 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/agent-workspace-e2e.XXXXXX")"
-mkdir -p -- "$TEST_DIR/data"
+mkdir -p -- "$TEST_DIR/data" "$TEST_DIR/files" "$TEST_DIR/default-alt" \
+  "$TEST_DIR/project-a" "$TEST_DIR/project-b" "$TEST_DIR/external"
+"$BACKEND_PYTHON" - "$TEST_DIR" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+(root / "external" / "source.txt").write_text("外部路径测试：只读资料\n", encoding="utf-8")
+PY
 
 # These explicit process values override .env files, even if a real key is configured.
 export DEEPSEEK_API_KEY=test-placeholder
 export DEEPSEEK_BASE_URL="http://127.0.0.1:$FIXTURE_PORT"
 export WORKSPACE_DATA_DIR="$TEST_DIR/data"
+export WORKSPACE_FILES_DIR="$TEST_DIR/files"
+export WORKSPACE_E2E_ROOT="$TEST_DIR"
 export RUNTIME_DB_PATH="$TEST_DIR/data/runtime.db"
 export BACKEND_URL="http://127.0.0.1:$BACKEND_PORT"
 export AGENT_URL="$BACKEND_URL/agent"
@@ -168,4 +181,13 @@ echo "运行浏览器检查；模型传输仅连接本地 fixture，不使用真
   exec npm run test:e2e
 ) &
 TEST_PID=$!
-wait "$TEST_PID"
+if wait "$TEST_PID"; then
+  exit 0
+else
+  test_status=$?
+  for log_name in fixture backend frontend; do
+    echo "$log_name 测试失败诊断：" >&2
+    tail -n 40 "$TEST_DIR/$log_name.log" >&2
+  done
+  exit "$test_status"
+fi

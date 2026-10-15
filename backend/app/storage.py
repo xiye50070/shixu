@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -32,6 +33,11 @@ class BusinessStore:
     def __init__(self, path: Path):
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
+        # This local database also stores a model credential. Restrict access to
+        # the current OS user; SQLite sidecars inherit the database permissions.
+        descriptor = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+        os.close(descriptor)
+        path.chmod(0o600)
         with self.connect() as db:
             db.executescript(
                 """
@@ -63,8 +69,28 @@ class BusinessStore:
                 );
                 CREATE INDEX IF NOT EXISTS messages_conversation
                     ON messages(conversation_id, position);
+                CREATE TABLE IF NOT EXISTS model_settings (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    payload TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS workspace_settings (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    default_workspace_path TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS filesystem_grants (
+                    id TEXT PRIMARY KEY,
+                    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                    path TEXT NOT NULL,
+                    kind TEXT NOT NULL CHECK(kind IN ('file', 'directory')),
+                    access TEXT NOT NULL CHECK(access IN ('read', 'read_write')),
+                    created_at TEXT NOT NULL,
+                    UNIQUE(conversation_id, path)
+                );
                 """
             )
+            # Additive migration: retain old projects, history and credentials.
+            if "workspace_path" not in {row["name"] for row in db.execute("PRAGMA table_info(projects)")}:
+                db.execute("ALTER TABLE projects ADD COLUMN workspace_path TEXT")
 
     @contextmanager
     def connect(self):
@@ -81,6 +107,19 @@ class BusinessStore:
         finally:
             db.close()
 
+    def model_settings(self) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = db.execute("SELECT payload FROM model_settings WHERE id = 1").fetchone()
+        return json.loads(row["payload"]) if row else None
+
+    def save_model_settings(self, values: dict[str, Any]) -> None:
+        with self.connect() as db:
+            db.execute(
+                "INSERT INTO model_settings(id, payload) VALUES (1, ?) "
+                "ON CONFLICT(id) DO UPDATE SET payload = excluded.payload",
+                (json.dumps(values, ensure_ascii=False),),
+            )
+
     @staticmethod
     def _conversation(row: sqlite3.Row | None) -> dict[str, Any] | None:
         if row is None:
@@ -93,18 +132,78 @@ class BusinessStore:
         with self.connect() as db:
             return [dict(row) for row in db.execute("SELECT * FROM projects ORDER BY created_at")]
 
+    def project(self, project_id: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        return dict(row) if row else None
+
     def project_exists(self, project_id: str) -> bool:
         with self.connect() as db:
             return db.execute("SELECT 1 FROM projects WHERE id = ?", (project_id,)).fetchone() is not None
 
-    def create_project(self, name: str) -> dict[str, Any]:
-        project = {"id": str(uuid4()), "name": name, "created_at": utc_now()}
+    def create_project(self, name: str, workspace_path: str | None = None) -> dict[str, Any]:
+        project = {"id": str(uuid4()), "name": name, "created_at": utc_now(), "workspace_path": workspace_path}
         with self.connect() as db:
             db.execute(
-                "INSERT INTO projects(id, name, created_at) VALUES (:id, :name, :created_at)",
+                "INSERT INTO projects(id, name, created_at, workspace_path) VALUES (:id, :name, :created_at, :workspace_path)",
                 project,
             )
         return project
+
+    def set_project_workspace(self, project_id: str, path: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            db.execute("UPDATE projects SET workspace_path = ? WHERE id = ?", (path, project_id))
+        return self.project(project_id)
+
+    def project_conversation_ids(self, project_id: str) -> list[str]:
+        with self.connect() as db:
+            return [row["id"] for row in db.execute("SELECT id FROM conversations WHERE project_id = ?", (project_id,))]
+
+    def delete_project(self, project_id: str) -> bool:
+        """Remove the grouping atomically, preserving conversations and files."""
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute("SELECT 1 FROM projects WHERE id = ?", (project_id,)).fetchone() is None:
+                return False
+            # Do not change titles, pins or timestamps, and do not remove their
+            # messages/grants. Agent checkpoints live in another database.
+            db.execute("UPDATE conversations SET project_id = NULL WHERE project_id = ?", (project_id,))
+            db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        return True
+
+    def default_workspace_path(self) -> str | None:
+        with self.connect() as db:
+            row = db.execute("SELECT default_workspace_path FROM workspace_settings WHERE id = 1").fetchone()
+        return row["default_workspace_path"] if row else None
+
+    def save_default_workspace_path(self, path: str) -> None:
+        with self.connect() as db:
+            db.execute(
+                "INSERT INTO workspace_settings(id, default_workspace_path) VALUES (1, ?) "
+                "ON CONFLICT(id) DO UPDATE SET default_workspace_path = excluded.default_workspace_path", (path,),
+            )
+
+    def grants(self, conversation_id: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT id, path, kind, access FROM filesystem_grants WHERE conversation_id = ? ORDER BY created_at, id",
+                (conversation_id,),
+            ).fetchall()
+        return [{**dict(row), "mount_path": f"/external/{row['id']}/"} for row in rows]
+
+    def save_grant(self, conversation_id: str, path: str, kind: str, access: str) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute(
+                "INSERT INTO filesystem_grants(id, conversation_id, path, kind, access, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(conversation_id, path) DO UPDATE SET access = excluded.access, kind = excluded.kind",
+                (str(uuid4()), conversation_id, path, kind, access, utc_now()),
+            )
+        return next(grant for grant in self.grants(conversation_id) if grant["path"] == path)
+
+    def revoke_grant(self, conversation_id: str, grant_id: str) -> bool:
+        with self.connect() as db:
+            cursor = db.execute("DELETE FROM filesystem_grants WHERE conversation_id = ? AND id = ?", (conversation_id, grant_id))
+        return cursor.rowcount > 0
 
     def list_conversations(self) -> list[dict[str, Any]]:
         with self.connect() as db:

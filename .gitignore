@@ -9,6 +9,7 @@ node_modules/
 .next-test/
 .next-build-check/
 data/
+agent-files/
 __pycache__/
 .pytest_cache/
 *.pyc

@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-14",
+  "profile": "saas",
+  "density": "standard",
+  "viewport": { "width": 1440, "height": 960 },
+  "source": "Live DOM measurements asserted by frontend/tests/model-settings.spec.ts; full isolated suite: 11 passed",
+  "inputHeight": 40,
+  "buttonHeight": 40,
+  "sidebarWidth": 260,
+  "topbarHeight": 56,
+  "cardRadius": 30,
+  "inputFontSize": 14,
+  "responsiveChecks": [
+    { "width": 390, "height": 844, "documentHorizontalOverflow": false, "formActionsReachable": true },
+    { "width": 720, "height": 480, "documentHorizontalOverflow": false, "formActionsReachable": true }
+  ],
+  "realProviderCalled": false
+}

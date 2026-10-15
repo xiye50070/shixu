@@ -31,23 +31,12 @@ import sys
 for value in sys.argv[1:]:
     port = int(value)
     with socket.socket() as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind(("127.0.0.1", port))
         except OSError as exc:
             print(f"端口 {port} 无法使用：{exc}。请自行关闭占用进程后重试。", file=sys.stderr)
             raise SystemExit(1)
-PY
-
-"$BACKEND_PYTHON" - "$PROJECT_DIR/backend/.env" <<'PY'
-import os
-import sys
-from dotenv import dotenv_values
-
-config = dotenv_values(sys.argv[1])
-key = os.environ.get("DEEPSEEK_API_KEY") or config.get("DEEPSEEK_API_KEY")
-if not key or not key.strip():
-    print("提示：backend/.env 尚未配置 DEEPSEEK_API_KEY。")
-    print("项目、会话和搜索可以使用；发送 Agent 消息会提示需要配置密钥。")
 PY
 
 # Only walk descendants of the two processes launched below.
